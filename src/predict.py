@@ -17,8 +17,11 @@ os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "1")
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 
 from src.utils import load_config
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 
 def parse_args() -> argparse.Namespace:
@@ -120,4 +123,3 @@ if __name__ == "__main__":
         model_uri=args.model_uri,
         config_path=args.config,
     )
-

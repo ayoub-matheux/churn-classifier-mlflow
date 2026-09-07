@@ -18,6 +18,7 @@ import mlflow
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
@@ -36,6 +37,8 @@ from src.utils import (
     plot_pr_curve,
     plot_roc_curve,
 )
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 
 def parse_args() -> argparse.Namespace:
@@ -186,4 +189,3 @@ def evaluate(config_path: str = "configs/config.yaml", run_id: str | None = None
 if __name__ == "__main__":
     args = parse_args()
     evaluate(config_path=args.config, run_id=args.run_id)
-

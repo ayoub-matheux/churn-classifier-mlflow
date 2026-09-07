@@ -1,197 +1,245 @@
-# 📊 Churn Classifier with Pipelines + MLflow
+# Customer Churn Classification with MLflow
 
-An end-to-end, production-ready MLOps project demonstrating reproducible tabular classification using **scikit-learn** pipelines (`Pipeline` + `ColumnTransformer`) and comprehensive experiment tracking, model tuning, artifact logging, and model registry with **MLflow**.
+An end-to-end MLOps project for binary customer-churn prediction using the IBM Telco Customer Churn dataset. It combines a scikit-learn preprocessing and modelling pipeline with experiment tracking, model registration, evaluation artifacts, batch inference, automated tests, and a Docker runtime.
 
----
+## What the project does
 
-## 📁 Repository Structure
+- Downloads the configured dataset automatically when `data/raw.csv` is missing.
+- Cleans the Telco-specific `TotalCharges` column and removes identifier columns.
+- Splits data into reproducible, stratified training and test sets.
+- Builds a `ColumnTransformer` pipeline:
+  - numeric features: median imputation and standard scaling;
+  - categorical features: most-frequent imputation and one-hot encoding with unknown-category handling.
+- Trains a baseline and tunes either Logistic Regression or Random Forest.
+- Tracks parameters, metrics, models, and evaluation artifacts in MLflow.
+- Optionally registers the tuned model as `ChurnClassifier` and assigns the `staging` alias.
+- Produces batch predictions in CSV format.
+
+## Project layout
 
 ```text
-Project/
-├─ configs/
-│  └─ config.yaml             # Central configuration (data, features, model grids, CV, MLflow)
-├─ data/                      # Raw and processed datasets (gitignored)
-│  ├─ raw.csv                 # Telco Customer Churn dataset
-│  └─ processed/              # Stratified train/test splits & latest run metadata
-├─ src/
-│  ├─ __init__.py
-│  ├─ pipeline.py             # Modular ColumnTransformer + classifier pipeline constructor
-│  ├─ train.py                # GridSearchCV hyperparameter tuning + MLflow autolog + Model Registry
-│  ├─ evaluate.py             # Test split evaluation + diagnostic artifact generation & logging
-│  ├─ predict.py              # CLI for batch inference on new/unseen CSV data
-│  └─ utils.py                # Data loading, cleaning, plotting, and config utilities
-├─ tests/
-│  ├─ __init__.py
-│  └─ test_pipeline.py        # Sanity tests for pipeline architecture, fitting, and data cleaning
-├─ reports/                   # Saved evaluation plots and predictions
-├─ Dockerfile                 # Containerized runtime for training and inference
-├─ Makefile                   # Automation shortcuts for workflow tasks
-├─ requirements.txt           # Python dependencies
-├─ .env.example               # Template for MLflow environment variables
-├─ .gitignore                 # Standard ML / Python ignore patterns
-└─ README.md                  # Project documentation
+.
+├── configs/config.yaml       # Data, features, tuning, and MLflow settings
+├── src/
+│   ├── pipeline.py           # Preprocessing and estimator pipeline factory
+│   ├── train.py              # Baseline, tuning, MLflow logging, optional registry
+│   ├── evaluate.py           # Test metrics and diagnostic artifacts
+│   ├── predict.py            # Batch-inference CLI
+│   └── utils.py              # Data, configuration, and plotting helpers
+├── tests/                    # Unit and integration tests
+├── Dockerfile
+├── docker-entrypoint.sh
+├── Makefile
+├── requirements.txt
+└── .env.example
 ```
 
----
+Runtime data, reports, local MLflow storage, and virtual environments are intentionally ignored by Git.
 
-## 🚀 Key Features
+## Requirements
 
-1. **Robust Feature Preprocessing**:
-   - **Numerical Pipeline**: Median imputation (`SimpleImputer`) + feature standardization (`StandardScaler`).
-   - **Categorical Pipeline**: Most frequent imputation (`SimpleImputer`) + one-hot encoding (`OneHotEncoder(handle_unknown="ignore", sparse_output=False)`).
-   - **Data Cleaning**: Automatically handles the Telco churn dataset quirk where empty strings in `TotalCharges` for new customers (`tenure == 0`) are converted to `NaN` and imputed gracefully.
+- Python 3.11 is used by the Docker image; Python 3.10+ is recommended locally.
+- `make` is optional.
+- Docker is optional for containerised execution.
 
-2. **MLflow Tracking & Autologging**:
-   - Automatically logs estimator parameters, model schemas, signatures, and input examples with `mlflow.sklearn.autolog`.
-   - Organizes runs under hierarchical experiments with full parent/child relationship during cross-validation.
+## Installation
 
-3. **Hyperparameter Tuning & Cross-Validation**:
-   - Stratified $K$-fold cross-validation ($k=5$) scored on `roc_auc`.
-   - Grid search across regularizations (`C`), penalties, solvers for Logistic Regression, and depth / estimators for Random Forest.
+Create and activate a virtual environment.
 
-4. **Rich Evaluation & Artifact Tracking**:
-   - Held-out test set evaluation with ROC-AUC, Accuracy, Precision, Recall, F1-Score, and Log Loss.
-   - Generates and logs diagnostic figures directly to MLflow:
-     - **ROC Curve** (`roc_curve.png`)
-     - **Precision-Recall Curve** (`pr_curve.png`)
-     - **Confusion Matrix Heatmap** (`confusion_matrix.png`)
-     - **Top Feature Importances / Coefficients** (`feature_importance.png`)
-     - **Test Predictions CSV** (`test_predictions.csv`) for residual and error analysis
-     - **Classification Report JSON** (`classification_report.json`)
-
-5. **Model Registry & Staging**:
-   - Automatically registers best models under `ChurnClassifier`.
-   - Supports stage transitions (e.g. `Staging`) and modern MLflow model aliases (`@staging`).
-
----
-
-## 📈 Benchmark & Experimental Results
-
-Evaluated on the 20% held-out test split (1,409 customers):
-
-| Model | Best CV ROC-AUC | Test ROC-AUC | Test Accuracy | Test F1-Score | Best Parameters |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| **Logistic Regression** | **`0.8463`** | **`0.8411`** | **`80.48%`** | **`60.32%`** | `C=10.0, solver=liblinear, penalty=l2` |
-| **Random Forest** | **`0.8458`** | **`0.8399`** | **`79.35%`** | **`51.74%`** | `n_estimators=200, max_depth=5, min_samples_split=2` |
-
-All diagnostic curves (`roc_curve.png`, `pr_curve.png`, `confusion_matrix.png`, `feature_importance.png`) are saved in `reports/` and logged directly to MLflow.
-
----
-
-## 🛠️ Setup Instructions (Virtual Environment)
-
-### 1. Create and Activate Virtual Environment
-
-**On Windows (PowerShell):**
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-**On Linux / macOS:**
+On Linux or macOS:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-### 2. Install Dependencies
+Optional MLflow environment overrides can be created from the supplied template:
 
 ```powershell
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-*(Alternatively, run `make init` if `make` is installed).*
+The scripts load `.env` from the repository root. `MLFLOW_TRACKING_URI` and `MLFLOW_EXPERIMENT_NAME`, when set, override the values in `configs/config.yaml`.
 
----
+## Configuration
 
-## 🏃 Quickstart: Training, Evaluation & Tracking
+All workflow settings are in [configs/config.yaml](configs/config.yaml):
 
-### 1. Train and Tune Models with MLflow
+- `data`: source path, download URL, target, split size, and random seed;
+- `features`: numeric and categorical input columns;
+- `model`: default model and each model's search space;
+- `cv`: cross-validation strategy, scoring, parallelism, and search budget;
+- `mlflow`: tracking URI, experiment name, registered model name, and target stage.
 
-Run hyperparameter tuning for Logistic Regression and register the best model to the Model Registry:
+The default configuration uses `StratifiedKFold`, five folds, ROC-AUC scoring, and a 30-candidate random search. Supported model types are `logreg` and `random_forest`. Supported CV strategies are `StratifiedKFold`, `KFold`, and `RepeatedStratifiedKFold`.
+
+## Run the workflow
+
+### Train and tune
+
+This downloads the dataset if necessary, writes the stratified split to `data/processed/`, logs a baseline and a tuned run, and records the most recent tuned run in `data/processed/latest_run.json`.
+
+```powershell
+python src/train.py --config configs/config.yaml
+```
+
+Register the tuned model in MLflow:
 
 ```powershell
 python src/train.py --config configs/config.yaml --register
 ```
 
-Or train a Random Forest classifier:
+Train the Random Forest instead of the configured default:
 
 ```powershell
 python src/train.py --config configs/config.yaml --model-type random_forest --register
 ```
 
-### 2. Evaluate Model & Log Diagnostic Artifacts
+### Evaluate
 
-Evaluate the trained model on the held-out test set and log ROC/PR plots and confusion matrices:
+Evaluation loads the model from the latest run (or from `--run-id`), scores it on the held-out test set, saves artifacts under `reports/`, and logs them to that MLflow run.
 
 ```powershell
 python src/evaluate.py --config configs/config.yaml
+python src/evaluate.py --config configs/config.yaml --run-id <MLFLOW_RUN_ID>
 ```
 
-### 3. Launch MLflow UI
+Metrics are ROC-AUC, accuracy, precision, recall, F1, and log loss. Artifacts include ROC and precision-recall curves, a confusion matrix, feature importance or coefficient plot, test predictions, and a classification report.
 
-View all experiment runs, metrics, parameters, and logged artifacts:
+### Predict
+
+By default, prediction uses the model URI stored in `data/processed/latest_run.json`.
 
 ```powershell
-mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000 --workers 1
-```
-Open your browser at [http://localhost:5000](http://localhost:5000).
-
-### 4. Run Batch Predictions
-
-Make churn predictions on raw or new customer data using the latest run:
-
-```powershell
-python src/predict.py --input data/raw.csv --output data/predictions.csv
+python src/predict.py --input data/raw.csv --output data/predictions.csv --config configs/config.yaml
 ```
 
-Or make predictions directly using the **registered staging model**:
+To load a registered model explicitly:
 
 ```powershell
 python src/predict.py --input data/raw.csv --output data/predictions.csv --model-uri "models:/ChurnClassifier@staging"
 ```
 
----
+The input CSV must include the feature columns defined in the configuration. It may also include `Churn` and an ID column; these are removed before inference. The output preserves the input columns and adds `churn_prediction` and `churn_probability`.
 
-## 🧪 Testing and Linting
+### View experiments
 
-Run automated unit tests:
-
-```powershell
-pytest -v tests/
-```
-
-Check code quality with `ruff`:
+With the default local SQLite backend:
 
 ```powershell
-ruff check src tests
+mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000 --workers 1
 ```
 
----
+Open `http://localhost:5000` in a browser.
 
-## 🐳 Docker Usage
+## Make targets
 
-Build the Docker image:
+```text
+make init       # Create .venv and install dependencies
+make train      # Tune Logistic Regression and register the model
+make train-rf   # Tune Random Forest and register the model
+make evaluate   # Evaluate the latest trained model
+make predict    # Run batch prediction on data/raw.csv
+make test       # Run the test suite
+make lint       # Run Ruff
+make ui         # Start the MLflow UI
+```
+
+## Tests and linting
+
+Run only the repository test suite (this avoids collecting unrelated local directories):
+
+```powershell
+python -m pytest -v tests
+python -m ruff check src tests
+```
+
+The integration test creates its own small dataset and isolated MLflow SQLite store, then exercises training, evaluation, and prediction end to end.
+
+## Docker
+
+Docker lets you run the project with its Python version and dependencies already installed; a local virtual environment is not needed. Install and start Docker Desktop first, then run the following commands **from the repository root**.
+
+### 1. Build the image
+
+This creates a local image named `churn-classifier:latest`. Rebuild it after changing the source code, dependencies, or Dockerfile.
 
 ```bash
 docker build -t churn-classifier:latest .
 ```
 
-Run training inside container:
+### 2. Choose a workflow
+
+The container entry point accepts `train` (the default), `evaluate`, or `predict`. Additional options are passed directly to the corresponding Python script. Running without a mounted volume is useful for a quick test, but generated data, MLflow runs, reports, and predictions are removed with the container.
 
 ```bash
-docker run --rm -v $(pwd)/mlruns:/app/mlruns churn-classifier:latest
+docker run --rm churn-classifier:latest train
+docker run --rm churn-classifier:latest evaluate
+docker run --rm churn-classifier:latest predict --input data/raw.csv --output data/predictions.csv
 ```
 
----
+`train` downloads the dataset if it is not already present, trains and logs a model. `evaluate` needs a previous training run, and `predict` needs either the latest training-run metadata or an explicit `--model-uri`. Therefore, use the persistent setup below when chaining commands.
 
-## ⚙️ Configuration (`configs/config.yaml`)
+### 3. Persist data and MLflow runs
 
-All parameters are centrally managed in `configs/config.yaml`:
-- Dataset path and automatic download URL.
-- Numeric and categorical feature definitions.
-- Model hyperparameters search space for `logreg` and `random_forest`.
-- Cross-validation split count and evaluation metrics.
-- MLflow experiment name and registered model naming.
+Bind mounts connect folders on your machine to folders inside the container:
 
+- `data` keeps the downloaded dataset, processed files, and prediction CSVs;
+- `mlflow` keeps the local MLflow SQLite database and artifacts;
+- `reports` keeps evaluation plots and reports.
+
+The `MLFLOW_TRACKING_URI` must use the **container path** (`/app/mlflow/mlflow.db`), not a path from the host machine. On Linux or macOS, train with:
+
+```bash
+docker run --rm \
+  -e MLFLOW_TRACKING_URI=sqlite:////app/mlflow/mlflow.db \
+  -v "$(pwd)/data:/app/data" \
+  -v "$(pwd)/mlflow:/app/mlflow" \
+  -v "$(pwd)/reports:/app/reports" \
+  churn-classifier:latest train
+```
+
+On Windows PowerShell, use `${PWD}` and backticks for line continuation:
+
+```powershell
+docker run --rm `
+  -e MLFLOW_TRACKING_URI=sqlite:////app/mlflow/mlflow.db `
+  -v "${PWD}/data:/app/data" `
+  -v "${PWD}/mlflow:/app/mlflow" `
+  -v "${PWD}/reports:/app/reports" `
+  churn-classifier:latest train
+```
+
+Run evaluation against that same persistent store (use the same mounts and tracking URI):
+
+```powershell
+docker run --rm `
+  -e MLFLOW_TRACKING_URI=sqlite:////app/mlflow/mlflow.db `
+  -v "${PWD}/data:/app/data" `
+  -v "${PWD}/mlflow:/app/mlflow" `
+  -v "${PWD}/reports:/app/reports" `
+  churn-classifier:latest evaluate
+```
+
+For a batch prediction, add the workflow and its arguments after the image name. The result will be written to `data/predictions.csv` on the host:
+
+```powershell
+docker run --rm `
+  -e MLFLOW_TRACKING_URI=sqlite:////app/mlflow/mlflow.db `
+  -v "${PWD}/data:/app/data" `
+  -v "${PWD}/mlflow:/app/mlflow" `
+  churn-classifier:latest predict --input data/raw.csv --output data/predictions.csv
+```
+
+To inspect the locally persisted experiments, start the UI on the host after installing the Python dependencies, using the command in [View experiments](#view-experiments). Alternatively, run an MLflow tracking server that is reachable from the container.
+
+For shared or production tracking, set `MLFLOW_TRACKING_URI` to a reachable MLflow tracking server rather than using SQLite in the container.

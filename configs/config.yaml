@@ -32,23 +32,34 @@ model:
   type: "logreg"  # options: "logreg", "random_forest"
   logreg:
     param_grid:
-      model__C: [0.1, 1.0, 10.0]
-      model__penalty: ["l2"]
-      model__solver: ["lbfgs", "liblinear"]
+      model__C: [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+      model__penalty: ["l1", "l2"]
+      # Both solvers support l1 and l2, so every sampled combination is valid.
+      model__solver: ["liblinear", "saga"]
+      model__class_weight: [null, "balanced"]
   random_forest:
     param_grid:
-      model__n_estimators: [50, 100, 200]
-      model__max_depth: [null, 5, 10]
-      model__min_samples_split: [2, 5]
+      model__n_estimators: [200, 400, 600]
+      model__max_depth: [null, 4, 6, 8, 12]
+      model__min_samples_split: [2, 5, 10, 20]
+      model__min_samples_leaf: [1, 2, 4, 8]
+      model__max_features: ["sqrt", "log2", null]
+      model__class_weight: [null, "balanced"]
 
 cv:
   strategy: "StratifiedKFold"
   n_splits: 5
+  shuffle: true
+  n_jobs: -1
   scoring: "roc_auc"
+  # Fixed-budget random search covers broad spaces much more efficiently than
+  # evaluating their full Cartesian product. Set search_type: grid for an
+  # exhaustive, small search.
+  search_type: "random"
+  n_iter: 30
 
 mlflow:
   experiment_name: "churn-classifier"
   tracking_uri: "sqlite:///mlflow.db"
   registered_model_name: "ChurnClassifier"
   stage: "Staging"
-

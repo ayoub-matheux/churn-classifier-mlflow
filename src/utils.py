@@ -1,7 +1,6 @@
 """Utility functions for data loading, preprocessing, plotting, and configuration."""
 
 import os
-import ssl
 import urllib.request
 from typing import Any
 
@@ -49,15 +48,10 @@ def download_data_if_missing(csv_path: str, url: str) -> None:
 
     os.makedirs(os.path.dirname(os.path.abspath(csv_path)), exist_ok=True)
     print(f"Downloading dataset from {url} to {csv_path}...")
-    try:
-        urllib.request.urlretrieve(url, csv_path)
-    except Exception:  # noqa: BLE001
-        # Fallback with unverified context in case of corporate SSL interception
-        context = ssl._create_unverified_context()
-        with urllib.request.urlopen(url, context=context) as response, open(
-            csv_path, "wb"
-        ) as out_file:
-            out_file.write(response.read())
+    # TLS verification must remain enabled. In a corporate network, install
+    # the proxy CA in the operating system / Docker image trust store instead
+    # of weakening certificate verification in application code.
+    urllib.request.urlretrieve(url, csv_path)
     print("Dataset downloaded successfully.")
 
 
@@ -296,4 +290,3 @@ def plot_feature_importance(
     except Exception as exc:  # noqa: BLE001
         print(f"Warning: Could not plot feature importance: {exc}")
         return None
-

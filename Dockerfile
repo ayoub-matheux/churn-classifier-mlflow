@@ -6,11 +6,11 @@ WORKDIR /app
 
 # Prevent Python from writing .pyc files and buffer stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    MLFLOW_TRACKING_URI=mlruns
+    PYTHONUNBUFFERED=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -25,10 +25,15 @@ COPY configs/ ./configs/
 COPY src/ ./src/
 COPY tests/ ./tests/
 COPY Makefile ./
+COPY docker-entrypoint.sh ./
+RUN chmod +x ./docker-entrypoint.sh
+
+# Persist input data, the SQLite backend (when used), and MLflow artifacts.
+VOLUME ["/app/data", "/app/mlflow", "/app/mlartifacts"]
 
 # Expose MLflow tracking server default port
 EXPOSE 5000
 
-# Default command: run unit tests, then training
-CMD ["python", "src/train.py", "--config", "configs/config.yaml"]
-
+# Select an explicit workflow: train (default), evaluate, or predict.
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["train"]
