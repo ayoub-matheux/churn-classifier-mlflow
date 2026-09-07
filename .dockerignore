@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+mlruns
+mlartifacts
+data/raw.csv
+data/processed
+reports
+

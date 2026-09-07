@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.venv/
+venv/
+ENV/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# MLflow
+mlruns/
+mlartifacts/
+mlflow.db
+.trash/
+
+# Data
+data/raw.csv
+data/processed/
+data/*.csv
+!data/README.md
+
+# Reports & local artifacts
+reports/
+models/*.pkl
+models/*.joblib
+
+# Testing & Linting
+.pytest_cache/
+.ruff_cache/
+
+# Environment variables
+.env
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

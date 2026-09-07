@@ -1,0 +1,54 @@
+data:
+  csv_path: "data/raw.csv"
+  download_url: "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv"
+  target: "Churn"
+  test_size: 0.2
+  random_state: 42
+
+features:
+  numeric:
+    - "tenure"
+    - "MonthlyCharges"
+    - "TotalCharges"
+  categorical:
+    - "gender"
+    - "SeniorCitizen"
+    - "Partner"
+    - "Dependents"
+    - "PhoneService"
+    - "MultipleLines"
+    - "InternetService"
+    - "OnlineSecurity"
+    - "OnlineBackup"
+    - "DeviceProtection"
+    - "TechSupport"
+    - "StreamingTV"
+    - "StreamingMovies"
+    - "Contract"
+    - "PaperlessBilling"
+    - "PaymentMethod"
+
+model:
+  type: "logreg"  # options: "logreg", "random_forest"
+  logreg:
+    param_grid:
+      model__C: [0.1, 1.0, 10.0]
+      model__penalty: ["l2"]
+      model__solver: ["lbfgs", "liblinear"]
+  random_forest:
+    param_grid:
+      model__n_estimators: [50, 100, 200]
+      model__max_depth: [null, 5, 10]
+      model__min_samples_split: [2, 5]
+
+cv:
+  strategy: "StratifiedKFold"
+  n_splits: 5
+  scoring: "roc_auc"
+
+mlflow:
+  experiment_name: "churn-classifier"
+  tracking_uri: "sqlite:///mlflow.db"
+  registered_model_name: "ChurnClassifier"
+  stage: "Staging"
+
